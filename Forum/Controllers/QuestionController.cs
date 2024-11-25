@@ -18,7 +18,8 @@ public class QuestionController : Controller
     // GET: Questions
     public async Task<IActionResult> Index()
     {
-        return View(await _context.Questions.ToListAsync());
+        var applicationDbContext = _context.Questions.Include(q => q.User).Include(a=>a.Answers);
+        return View(await applicationDbContext.ToListAsync());
     }
 
     // GET: Questions/Details/5
@@ -27,6 +28,8 @@ public class QuestionController : Controller
         if (id == null) return NotFound();
 
         var question = await _context.Questions
+                .Include(a=>a.Answers)
+                .ThenInclude(q=> q.User)
             .FirstOrDefaultAsync(m => m.Id == id);
         if (question == null) return NotFound();
 
