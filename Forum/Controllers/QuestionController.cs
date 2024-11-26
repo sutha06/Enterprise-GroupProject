@@ -34,9 +34,9 @@ public class QuestionController : Controller
         }
 
         var question = await _context.Questions
-            .Include(q => q.User)         // Include User
-            .Include(q => q.Answers)      // Include Answers
-            .ThenInclude(a => a.User)     // Include User for each Answer
+            .Include(q => q.User)         
+            .Include(q => q.Answers)      
+            .ThenInclude(a => a.User)     
             .FirstOrDefaultAsync(m => m.Id == id);
 
         if (question == null)
