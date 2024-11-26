@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Forum.Data;
 using Forum.Models;
@@ -49,6 +50,7 @@ public class QuestionController : Controller
 
 
     // GET: Questions/Create
+    [Authorize]
     public IActionResult Create()
     {
         return View();
@@ -56,6 +58,7 @@ public class QuestionController : Controller
 
     // POST: Questions/Create
     [HttpPost]
+    [Authorize]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([Bind("Id,Title,Description,IdentityUserId")] Question question)
     {
@@ -71,6 +74,7 @@ public class QuestionController : Controller
     
     
     [HttpPost]
+    [Authorize]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddAnswer([Bind("Id,Content,QuestionId,IdentityUserId")] Answer answer)
     {
@@ -98,12 +102,13 @@ public class QuestionController : Controller
 
 
     // GET: Questions/Edit/5
+    [Authorize]
     public async Task<IActionResult> Edit(int? id)
     {
         if (id == null) return NotFound();
 
         var question = await _context.Questions.FindAsync(id);
-        if (question == null) return NotFound();
+        if (question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier)) return NotFound();
         return View(question);
     }
 
@@ -132,13 +137,14 @@ public class QuestionController : Controller
     }
 
     // GET: Questions/Delete/5
+    [Authorize]
     public async Task<IActionResult> Delete(int? id)
     {
         if (id == null) return NotFound();
 
         var question = await _context.Questions
             .FirstOrDefaultAsync(m => m.Id == id);
-        if (question == null) return NotFound();
+        if (question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier)) return NotFound();
 
         return View(question);
     }
@@ -146,6 +152,7 @@ public class QuestionController : Controller
     // POST: Questions/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var question = await _context.Questions.FindAsync(id);
