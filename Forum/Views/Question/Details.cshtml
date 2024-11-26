@@ -6,11 +6,15 @@
 
 @{
     ViewData["Title"] = "Details";
+
+    // Initialize UserManager logic safely
+    string currentUserId = UserManager?.GetUserId(User);
+    bool isOwner = Model?.IdentityUserId == currentUserId;
 }
 
-<h3>@Model?.Title ?? "No Title"</h3>
-<p>@Model?.Description ?? "No Description"</p>
-<p>- @(Model?.User?.UserName ?? "Unknown User")</p>
+<h3>@(Model?.Title ?? "No Title")</h3>
+<p>@(Model?.Description ?? "No Description")</p>
+<p>- Posted by: @(Model?.User?.UserName ?? "Unknown User")</p>
 
 <h4>All Answers:</h4>
 @if (Model?.Answers != null && Model.Answers.Any())
@@ -26,19 +30,40 @@ else
     <p>No answers yet.</p>
 }
 
-<form asp-action="AddAnswer">
-    <div class="form-group">
-        <textarea name="Content" class="form-control" required></textarea>
-    </div>
-    <div class="form-group">
-        <input type="hidden" name="IdentityUserId" class="form-control" value="@UserManager.GetUserId(User)" />
-    </div>
-    <div class="form-group">
-        <input type="hidden" name="QuestionId" class="form-control" value="@Model?.Id" />
-    </div>
-    <div class="form-group">
-        <input type="submit" class="btn btn-info" value="Submit" />
-    </div>
-</form>
+<!-- Add Answer Form -->
+@if (SignInManager.IsSignedIn(User))
+{
+    <form asp-action="AddAnswer" method="post">
+        <div class="form-group">
+            <textarea name="Content" class="form-control" placeholder="Add your answer..." required></textarea>
+        </div>
+        <div class="form-group">
+            <input type="hidden" name="QuestionId" value="@Model?.Id" />
+        </div>
+        <div class="form-group">
+            <input type="submit" class="btn btn-info" value="Submit Answer" />
+        </div>
+    </form>
+}
+else
+{
+    <p><a asp-area="" asp-page="/Account/Login">Log in</a> to add an answer.</p>
+}
 
-<a asp-action="Index">Back to List</a>
+<!-- Owner-only Actions -->
+@if (isOwner)
+{
+    <hr />
+    <div>
+        <!-- Edit Button -->
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+
+        <!-- Delete Form -->
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this question?');">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+}
+
+<!-- Back to List -->
+<a asp-action="Index" class="btn btn-secondary mt-3">Back to List</a>

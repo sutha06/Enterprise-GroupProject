@@ -5,7 +5,6 @@ using Forum.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 
 namespace Forum.Controllers
 {
@@ -21,28 +20,27 @@ namespace Forum.Controllers
         // GET: Questions
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Questions.Include(q => q.User).Include(a => a.Answers);
-            return View(await applicationDbContext.ToListAsync());
+            var questions = _context.Questions
+                .Include(q => q.User)
+                .Include(q => q.Answers);
+
+            return View(await questions.ToListAsync());
         }
 
         // GET: Questions/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.Questions == null)
-            {
+            if (id == null)
                 return NotFound();
-            }
 
             var question = await _context.Questions
                 .Include(q => q.User)
                 .Include(q => q.Answers)
                 .ThenInclude(a => a.User)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .FirstOrDefaultAsync(q => q.Id == id);
 
             if (question == null)
-            {
                 return NotFound();
-            }
 
             return View(question);
         }
@@ -58,11 +56,12 @@ namespace Forum.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Description,IdentityUserId")] Question question)
+        public async Task<IActionResult> Create([Bind("Title,Description")] Question question)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(question);
+                question.IdentityUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _context.Questions.Add(question);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
@@ -74,62 +73,74 @@ namespace Forum.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddAnswer([Bind("Id,Content,QuestionId,IdentityUserId")] Answer answer)
+        public async Task<IActionResult> AddAnswer([Bind("Content,QuestionId")] Answer answer)
         {
             if (ModelState.IsValid)
             {
-                // Add answer to the database
-                _context.Add(answer);
+                answer.IdentityUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _context.Answers.Add(answer);
                 await _context.SaveChangesAsync();
+
+                var question = await _context.Questions
+                    .Include(q => q.User)
+                    .Include(q => q.Answers)
+                    .ThenInclude(a => a.User)
+                    .FirstOrDefaultAsync(q => q.Id == answer.QuestionId);
+
+                if (question != null)
+                    return View("Details", question);
             }
 
-            // Fetch the question again to include updated answers
-            var question = await _context.Questions
-                .Include(q => q.User)
-                .Include(q => q.Answers)
-                .ThenInclude(a => a.User)
-                .FirstOrDefaultAsync(q => q.Id == answer.QuestionId);
-
-            if (question == null)
-            {
-                return NotFound();
-            }
-
-            return View("Details", question);
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Questions/Edit/5
         [Authorize]
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null) return NotFound();
+            if (id == null)
+                return NotFound();
 
             var question = await _context.Questions.FindAsync(id);
-            if (question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier)) return NotFound();
+
+            if (question == null || question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return Unauthorized();
+
             return View(question);
         }
 
         // POST: Questions/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Question question)
+        [Authorize]
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description")] Question question)
         {
-            if (id != question.Id) return NotFound();
+            if (id != question.Id)
+                return NotFound();
+
+            var existingQuestion = await _context.Questions.FindAsync(id);
+            if (existingQuestion == null || existingQuestion.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return Unauthorized();
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(question);
+                    existingQuestion.Title = question.Title;
+                    existingQuestion.Description = question.Description;
+                    _context.Update(existingQuestion);
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!QuestionExists(question.Id)) return NotFound();
-                    else throw;
+                    if (!QuestionExists(id))
+                        return NotFound();
+
+                    throw;
                 }
-                return RedirectToAction(nameof(Index));
             }
+
             return View(question);
         }
 
@@ -137,12 +148,14 @@ namespace Forum.Controllers
         [Authorize]
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null) return NotFound();
+            if (id == null)
+                return NotFound();
 
             var question = await _context.Questions
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .FirstOrDefaultAsync(q => q.Id == id);
 
-            if (question == null || question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier)) return NotFound();
+            if (question == null || question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return Unauthorized();
 
             return View(question);
         }
@@ -154,18 +167,18 @@ namespace Forum.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var question = await _context.Questions.FindAsync(id);
-            if (question != null)
-            {
-                _context.Questions.Remove(question);
-                await _context.SaveChangesAsync();
-            }
 
+            if (question == null || question.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return Unauthorized();
+
+            _context.Questions.Remove(question);
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool QuestionExists(int id)
         {
-            return _context.Questions.Any(e => e.Id == id);
+            return _context.Questions.Any(q => q.Id == id);
         }
     }
 }
