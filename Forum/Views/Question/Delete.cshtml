@@ -17,7 +17,9 @@
         <dd class="col-sm-10">@Model.Description</dd>
     </dl>
 </div>
-<form asp-action="DeleteConfirmed">
+
+<!-- Delete form with POST method -->
+<form asp-action="DeleteConfirmed" method="post">
     <input type="hidden" asp-for="Id" />
     <button type="submit" class="btn btn-danger">Delete</button> |
     <a asp-action="Index">Back to List</a>
