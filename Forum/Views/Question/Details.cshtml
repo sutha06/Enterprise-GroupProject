@@ -1,0 +1,44 @@
+@model Forum.Models.Question
+@using Microsoft.AspNetCore.Identity
+
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<h3>@Model?.Title ?? "No Title"</h3>
+<p>@Model?.Description ?? "No Description"</p>
+<p>- @(Model?.User?.UserName ?? "Unknown User")</p>
+
+<h4>All Answers:</h4>
+@if (Model?.Answers != null && Model.Answers.Any())
+{
+    @foreach (var answer in Model.Answers)
+    {
+        <p>@answer.Content - @(answer.User?.UserName ?? "Anonymous")</p>
+        <hr />
+    }
+}
+else
+{
+    <p>No answers yet.</p>
+}
+
+<form asp-action="AddAnswer">
+    <div class="form-group">
+        <textarea name="Content" class="form-control" required></textarea>
+    </div>
+    <div class="form-group">
+        <input type="hidden" name="IdentityUserId" class="form-control" value="@UserManager.GetUserId(User)" />
+    </div>
+    <div class="form-group">
+        <input type="hidden" name="QuestionId" class="form-control" value="@Model?.Id" />
+    </div>
+    <div class="form-group">
+        <input type="submit" class="btn btn-info" value="Submit" />
+    </div>
+</form>
+
+<a asp-action="Index">Back to List</a>
