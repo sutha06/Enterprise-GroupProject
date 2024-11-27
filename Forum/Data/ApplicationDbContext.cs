@@ -14,15 +14,16 @@ public class ApplicationDbContext : IdentityDbContext
     public DbSet<Question> Questions { get; set; }
     public DbSet<Answer> Answers { get; set; }
 
+    public DbSet<Profile> Profiles { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
+         base.OnModelCreating(modelBuilder);
 
-        // Configure cascade delete for Question -> Answers relationship
-        modelBuilder.Entity<Answer>()
-            .HasOne(a => a.Question)
-            .WithMany(q => q.Answers)
-            .HasForeignKey(a => a.QuestionId)
-            .OnDelete(DeleteBehavior.Cascade);
+    modelBuilder.Entity<Profile>()
+        .HasOne(p => p.User)
+        .WithOne()
+        .HasForeignKey<Profile>(p => p.UserId)
+        .OnDelete(DeleteBehavior.Cascade);
     }
 }
