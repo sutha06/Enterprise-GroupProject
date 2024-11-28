@@ -1,11 +1,12 @@
 @model Forum.Models.Question
-@using Microsoft.AspNetCore.Identity
 
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
 
 @{
     ViewData["Title"] = "Create";
+    
+    // Get the current user's ProfileId from session (stored as integer)
+    int? currentUserProfileId = HttpContextAccessor.HttpContext.Session.GetInt32("UserProfileId");
 }
 
 <h1>Create</h1>
@@ -13,21 +14,26 @@
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Create">
+        <form asp-action="Create" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
             <div class="form-group">
                 <label asp-for="Title" class="control-label"></label>
                 <input asp-for="Title" class="form-control" />
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
+            
             <div class="form-group">
                 <label asp-for="Description" class="control-label"></label>
                 <input asp-for="Description" class="form-control" />
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
+            
+            <!-- Use ProfileId (from session) for the current user -->
             <div class="form-group">
-                <input type="hidden" asp-for="IdentityUserId" class="form-control" value="@UserManager.GetUserId(User)"/>
+                <input type="hidden" name="ProfileId" value="@currentUserProfileId" />
             </div>
+            
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>

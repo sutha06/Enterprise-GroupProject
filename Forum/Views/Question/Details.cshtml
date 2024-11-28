@@ -1,27 +1,26 @@
 @model Forum.Models.Question
-@using Microsoft.AspNetCore.Identity
-
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
 
 @{
     ViewData["Title"] = "Details";
 
-    // Initialize UserManager logic safely
-    string currentUserId = UserManager?.GetUserId(User);
-    bool isOwner = Model?.IdentityUserId == currentUserId;
+    // Get the current user's ProfileId from the session
+    int? currentUserProfileId = HttpContextAccessor.HttpContext.Session.GetInt32("UserProfileId");
+
+    // Compare ProfileId (which is an int) with current user's ProfileId (also int from session)
+    bool isOwner = Model?.ProfileId == currentUserProfileId;  // Ensure ProfileId is an int for comparison
 }
 
 <h3>@(Model?.Title ?? "No Title")</h3>
 <p>@(Model?.Description ?? "No Description")</p>
-<p>- Posted by: @(Model?.User?.UserName ?? "Unknown User")</p>
+<p>- Posted by: @(Model?.Profile?.Email ?? "Unknown User")</p>  <!-- Reference Profile.Email instead of UserName -->
 
 <h4>All Answers:</h4>
 @if (Model?.Answers != null && Model.Answers.Any())
 {
     @foreach (var answer in Model.Answers)
     {
-        <p>@answer.Content - @(answer.User?.UserName ?? "Anonymous")</p>
+        <p>@answer.Content - @(answer.Profile?.Email ?? "Anonymous")</p>  <!-- Reference Profile.Email instead of UserName -->
         <hr />
     }
 }
@@ -31,7 +30,7 @@ else
 }
 
 <!-- Add Answer Form -->
-@if (SignInManager.IsSignedIn(User))
+@if (currentUserProfileId != null)
 {
     <form asp-action="AddAnswer" method="post">
         <div class="form-group">

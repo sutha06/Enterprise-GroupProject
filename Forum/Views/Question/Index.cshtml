@@ -12,13 +12,30 @@
         <h4>@item.Title</h4>
         <p>@item.Description</p>
         <p>
-            Posted by: @(item.User?.UserName ?? "Unknown") | 
-            Total answers: @(item.Answers?.Count ?? 0)
+            Posted by: @(item.Profile?.Email ?? "Unknown") | 
+            Total answers: @(item.Answers.Count)
         </p>
-        
+
+        <!-- List of Answers -->
+        @if (item.Answers.Count > 0)
+        {
+            <h5>Answers:</h5>
+            <ul>
+                @foreach (var answer in item.Answers)
+                {
+                    <li>
+                        <p>@answer.Content</p>
+                        <p>Answered by: @(answer.Profile?.Email ?? "Anonymous")</p>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p>No answers yet.</p>
+        }
+
         <!-- Details Link -->
         <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info">Details</a>
-
-        
     </div>
 }
