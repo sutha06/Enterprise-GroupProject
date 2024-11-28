@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Forum.Data;
 
@@ -11,10 +10,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Add Identity services
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
-
 // Add logging services
 builder.Services.AddLogging(logging =>
 {
@@ -24,8 +19,18 @@ builder.Services.AddLogging(logging =>
     logging.SetMinimumLevel(LogLevel.Information); // Set minimum log level to Information (can be adjusted)
 });
 
-// Add controllers with views (MVC)
+// Add session services
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // Set session timeout
+    options.Cookie.HttpOnly = true; // Secure the session cookie
+    options.Cookie.IsEssential = true;
+});
+
+// Add MVC services (for controllers and views)
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -37,20 +42,19 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    app.UseHsts(); // Default HSTS value is 30 days
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseSession(); // Enable session middleware
 
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Question}/{action=Index}/{id?}");
-app.MapRazorPages();
 
 app.Run();

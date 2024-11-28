@@ -18,12 +18,8 @@ public class ApplicationDbContext : IdentityDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-         base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(modelBuilder);
 
-    modelBuilder.Entity<Profile>()
-        .HasOne(p => p.User)
-        .WithOne()
-        .HasForeignKey<Profile>(p => p.UserId)
-        .OnDelete(DeleteBehavior.Cascade);
+      
     }
 }

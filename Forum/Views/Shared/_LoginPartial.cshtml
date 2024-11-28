@@ -1,16 +1,15 @@
-﻿@using Microsoft.AspNetCore.Identity
+﻿@using Microsoft.AspNetCore.Http
 @using Forum.Models
-@using Forum.Data
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
-@inject Forum.Data.ApplicationDbContext ApplicationDbContext
+@inject IHttpContextAccessor HttpContextAccessor
 
 <ul class="navbar-nav">
-    @if (SignInManager.IsSignedIn(User))
+    @if (HttpContextAccessor.HttpContext.Session.GetString("UserEmail") != null)
     {
         <!-- User is signed in -->
         <li class="nav-item">
-            <a class="nav-link text-dark" title="Manage">Hello @User.Identity?.Name!</a>
+            <a class="nav-link text-dark" title="Manage">
+                Hello @HttpContextAccessor.HttpContext.Session.GetString("UserEmail")!
+            </a>
         </li>
         <li class="nav-item">
             <form asp-controller="Profile" asp-action="Logout" method="post">

@@ -1,37 +1,30 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Forum.Data;
 using Forum.Models;
-using Microsoft.Extensions.Logging; // Add this for logging
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Forum.Controllers
 {
     public class ProfileController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly ILogger<ProfileController> _logger; // Logger
+        private readonly ILogger<ProfileController> _logger;
 
-        public ProfileController(
-            ApplicationDbContext context,
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            ILogger<ProfileController> logger) // Inject the logger
+        public ProfileController(ApplicationDbContext context, ILogger<ProfileController> logger)
         {
             _context = context;
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _logger = logger; // Set logger
+            _logger = logger;
         }
 
         [HttpGet]
         public IActionResult Register()
         {
-            _logger.LogInformation("Register GET action hit.");
+            _logger.LogInformation("Register GET action accessed.");
             return View();
         }
 
@@ -39,48 +32,39 @@ namespace Forum.Controllers
         [HttpPost]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
-            _logger.LogInformation("Register POST action hit with model: {model}", model.Email);
+            _logger.LogInformation("Register POST action triggered.");
 
             if (ModelState.IsValid)
             {
-                _logger.LogInformation("Model is valid. Attempting to create user.");
-
-                // Create a new IdentityUser
-                var user = new IdentityUser { UserName = model.Email, Email = model.Email };
-
-                // Attempt to create the user in AspNetUsers
-                var result = await _userManager.CreateAsync(user, model.Password);
-                if (result.Succeeded)
+                // Check if email already exists
+                if (await _context.Profiles.AnyAsync(p => p.Email == model.Email))
                 {
-                    _logger.LogInformation("User created successfully, now saving profile.");
-
-                    // Save the profile data linked with the AspNetUser ID
-                    var profile = new Profile
-                    {
-                        UserId = user.Id,
-                        Email = model.Email,
-                        Password = model.Password // Password field for additional profile info
-                    };
-                    _context.Add(profile);
-                    await _context.SaveChangesAsync();
-
-                    // Log in the user
-                    await _signInManager.SignInAsync(user, isPersistent: false);
-
-                    // Store success message in TempData
-                    TempData["SuccessMessage"] = "Registration successful! Welcome to the forum.";
-
-                    _logger.LogInformation("Registration successful. Redirecting to Home.");
-
-                    return RedirectToAction("Index", "Home");
+                    _logger.LogWarning("Email already registered.");
+                    ModelState.AddModelError("", "This email is already registered.");
+                    return View(model);
                 }
 
-                // Add Identity creation errors to ModelState
-                foreach (var error in result.Errors)
+                // Hash the password before storing it
+                var hashedPassword = HashPassword(model.Password);
+
+                // Generate a unique UserId for the new profile
+                var userId = Guid.NewGuid().ToString();
+
+                // Save profile in database
+                var profile = new Profile
                 {
-                    _logger.LogWarning("Identity error: {error}", error.Description);
-                    ModelState.AddModelError("", error.Description);
-                }
+                    Email = model.Email,
+                    Password = hashedPassword,
+                    UserId = userId // Assign the generated UserId
+                };
+
+                _context.Profiles.Add(profile);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Profile registered successfully.");
+
+                TempData["SuccessMessage"] = "Registration successful! Please log in.";
+                return RedirectToAction("Login");
             }
 
             return View(model);
@@ -89,84 +73,66 @@ namespace Forum.Controllers
         [HttpGet]
         public IActionResult Login()
         {
-            _logger.LogInformation("Login GET action hit.");
+            _logger.LogInformation("Login GET action accessed.");
             return View();
         }
 
         // Login (Authenticate Profile)
         [HttpPost]
-public async Task<IActionResult> Login(LoginViewModel model)
-{
-    _logger.LogInformation("Login POST action hit with model: {model}", model.Email);
-
-    if (ModelState.IsValid)
-    {
-        _logger.LogInformation("Model is valid. Attempting to find profile.");
-
-        // Look for the profile in the Profiles table (since you are saving profile data in the database)
-        var profile = await _context.Profiles
-                                     .FirstOrDefaultAsync(p => p.Email == model.Email && p.Password == model.Password);
-
-        if (profile != null)
+        public async Task<IActionResult> Login(LoginViewModel model)
         {
-            _logger.LogInformation("Profile found. Attempting to sign in the user.");
+            _logger.LogInformation("Login POST action triggered.");
 
-            // Use SignInManager to sign in the corresponding AspNetUser
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user != null)
+            if (ModelState.IsValid)
             {
-                var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: false, lockoutOnFailure: false);
-                if (result.Succeeded)
-                {
-                    _logger.LogInformation("Login successful. Redirecting to Home.");
+                // Find profile by email
+                var profile = await _context.Profiles
+                    .FirstOrDefaultAsync(p => p.Email == model.Email);
 
-                    // Redirect user to the home page
-                    TempData["SuccessMessage"] = "Login successful! Welcome back!";
-                    return RedirectToAction("Index", "Home"); // Redirecting to Home page
+                if (profile != null && VerifyPassword(model.Password, profile.Password))
+                {
+                    _logger.LogInformation("Login successful. Setting session.");
+
+                    // Set session for user
+                    HttpContext.Session.SetString("UserEmail", profile.Email);
+
+                    TempData["SuccessMessage"] = "Login successful! Welcome back.";
+                    return RedirectToAction("Index", "Home");
                 }
                 else
                 {
-                    _logger.LogWarning("Invalid login attempt for user: {email}", model.Email);
-                    // Add error message for invalid login attempt
-                    ModelState.AddModelError("", "Invalid login attempt.");
-                    return View(model);
+                    _logger.LogWarning("Invalid email or password.");
+                    ModelState.AddModelError("", "Invalid email or password.");
                 }
             }
-            else
-            {
-                _logger.LogWarning("User not found: {email}", model.Email);
-                // Handle user not found
-                ModelState.AddModelError("", "User not found.");
-                return View(model);
-            }
-        }
-        else
-        {
-            _logger.LogWarning("Profile not found for user: {email}", model.Email);
-            // Handle profile not found
-            ModelState.AddModelError("", "Profile not found.");
+
             return View(model);
         }
-    }
-    else
-    {
-        _logger.LogWarning("Model is invalid. Returning to the view.");
-    }
-
-    // Return the view only if login failed or model is invalid
-    return View(model);
-}
-
 
         // Logout
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Logout()
+        public IActionResult Logout()
         {
-            _logger.LogInformation("Logout action hit. Signing out.");
+            _logger.LogInformation("Logout action triggered.");
 
-            await _signInManager.SignOutAsync();
+            HttpContext.Session.Clear();
             return RedirectToAction("Index", "Home");
+        }
+
+        // Utility: Hash Password
+        private string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(bytes);
+        }
+
+        // Utility: Verify Password
+        private bool VerifyPassword(string inputPassword, string storedHashedPassword)
+        {
+            var hashedInput = HashPassword(inputPassword);
+            return hashedInput == storedHashedPassword;
         }
     }
 }

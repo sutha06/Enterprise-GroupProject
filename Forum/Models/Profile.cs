@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Identity;
 
 namespace Forum.Models
 {
@@ -14,9 +13,9 @@ namespace Forum.Models
         [Required]
         public string Password { get; set; }
 
-        public string UserId { get; set; } // This will store the foreign key to the AspNetUsers table
+        // UserId is no longer a foreign key to AspNetUsers, it’s just a regular field
+        public string UserId { get; set; } // Stores the unique identifier for the user
 
-        // Navigation property for the related IdentityUser
-        public virtual IdentityUser User { get; set; } // This allows you to access the related user
+        // No navigation property to IdentityUser anymore, as you're not using the AspNetUsers table
     }
 }
