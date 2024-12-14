@@ -46,7 +46,7 @@ public async Task<IActionResult> Register(RegisterViewModel model)
             return View(model);
         }
 
-       
+       //
         var user = new IdentityUser
         {
             UserName = model.Email,
@@ -68,7 +68,7 @@ public async Task<IActionResult> Register(RegisterViewModel model)
 
             _context.Profiles.Add(profile);
             await _context.SaveChangesAsync();
-
+//
             _logger.LogInformation("Profile registered and linked to AspNetUsers successfully.");
 
             TempData["SuccessMessage"] = "Registration successful! Please log in.";
