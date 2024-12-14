@@ -28,47 +28,64 @@ namespace Forum.Controllers
             return View();
         }
 
-        // Registration (Create Profile)
-        [HttpPost]
-        public async Task<IActionResult> Register(RegisterViewModel model)
+        using Microsoft.AspNetCore.Identity;
+
+[HttpPost]
+public async Task<IActionResult> Register(RegisterViewModel model)
+{
+    _logger.LogInformation("Register POST action triggered.");
+
+    if (ModelState.IsValid)
+    {
+      
+        var existingUser = await _userManager.FindByEmailAsync(model.Email);
+        if (existingUser != null)
         {
-            _logger.LogInformation("Register POST action triggered.");
-
-            if (ModelState.IsValid)
-            {
-                // Check if email already exists
-                if (await _context.Profiles.AnyAsync(p => p.Email == model.Email))
-                {
-                    _logger.LogWarning("Email already registered.");
-                    ModelState.AddModelError("", "This email is already registered.");
-                    return View(model);
-                }
-
-                // Hash the password before storing it
-                var hashedPassword = HashPassword(model.Password);
-
-                // Generate a unique UserId for the new profile
-                var userId = Guid.NewGuid().ToString();
-
-                // Save profile in database
-                var profile = new Profile
-                {
-                    Email = model.Email,
-                    Password = hashedPassword,
-                    UserId = userId // Assign the generated UserId
-                };
-
-                _context.Profiles.Add(profile);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Profile registered successfully.");
-
-                TempData["SuccessMessage"] = "Registration successful! Please log in.";
-                return RedirectToAction("Login");
-            }
-
+            _logger.LogWarning("Email already registered in AspNetUsers.");
+            ModelState.AddModelError("", "This email is already registered.");
             return View(model);
         }
+
+       //
+        var user = new IdentityUser
+        {
+            UserName = model.Email,
+            Email = model.Email
+        };
+
+        var createResult = await _userManager.CreateAsync(user, model.Password);
+        if (createResult.Succeeded)
+        {
+          
+            var profile = new Profile
+            {
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                CreatedAt = DateTime.UtcNow,
+                UserId = user.Id 
+            };
+
+            _context.Profiles.Add(profile);
+            await _context.SaveChangesAsync();
+//
+            _logger.LogInformation("Profile registered and linked to AspNetUsers successfully.");
+
+            TempData["SuccessMessage"] = "Registration successful! Please log in.";
+            return RedirectToAction("Login");
+        }
+        else
+        {
+            foreach (var error in createResult.Errors)
+            {
+                _logger.LogWarning($"Identity error: {error.Description}");
+                ModelState.AddModelError("", error.Description);
+            }
+        }
+    }
+
+    return View(model);
+}
 
         [HttpGet]
         public IActionResult Login()
@@ -77,7 +94,7 @@ namespace Forum.Controllers
             return View();
         }
 
-        // Login (Authenticate Profile)
+       
         [HttpPost]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
@@ -85,7 +102,7 @@ namespace Forum.Controllers
 
             if (ModelState.IsValid)
             {
-                // Find profile by email
+                
                 var profile = await _context.Profiles
                     .FirstOrDefaultAsync(p => p.Email == model.Email);
 
@@ -93,7 +110,7 @@ namespace Forum.Controllers
                 {
                     _logger.LogInformation("Login successful. Setting session.");
 
-                    // Set session for user
+                    
                     HttpContext.Session.SetString("UserEmail", profile.Email);
 
                     TempData["SuccessMessage"] = "Login successful! Welcome back.";
@@ -109,7 +126,7 @@ namespace Forum.Controllers
             return View(model);
         }
 
-        // Logout
+        
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Logout()
@@ -120,7 +137,7 @@ namespace Forum.Controllers
             return RedirectToAction("Index", "Home");
         }
 
-        // Utility: Hash Password
+        
         private string HashPassword(string password)
         {
             using var sha256 = SHA256.Create();
@@ -128,7 +145,7 @@ namespace Forum.Controllers
             return Convert.ToBase64String(bytes);
         }
 
-        // Utility: Verify Password
+       
         private bool VerifyPassword(string inputPassword, string storedHashedPassword)
         {
             var hashedInput = HashPassword(inputPassword);

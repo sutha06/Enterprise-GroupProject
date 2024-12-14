@@ -204,7 +204,7 @@ namespace Forum.Controllers
             return View(question);
         }
 
-        // GET: Questions/Delete/5
+       
         [Authorize]
         public async Task<IActionResult> Delete(int? id)
         {
@@ -227,7 +227,7 @@ namespace Forum.Controllers
             return View(question);
         }
 
-        // POST: Questions/Delete/5
+       
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         [Authorize]

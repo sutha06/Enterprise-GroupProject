@@ -9,6 +9,8 @@
 
     // Compare ProfileId (which is an int) with current user's ProfileId (also int from session)
     bool isOwner = Model?.ProfileId == currentUserProfileId;  // Ensure ProfileId is an int for comparison
+    string currentUserId = UserManager?.GetUserId(User);
+    bool isOwner = Model?.IdentityUserId == currentUserId;
 }
 
 <h3>@(Model?.Title ?? "No Title")</h3>
@@ -31,6 +33,7 @@ else
 
 <!-- Add Answer Form -->
 @if (currentUserProfileId != null)
+@if (SignInManager.IsSignedIn(User))
 {
     <form asp-action="AddAnswer" method="post">
         <div class="form-group">
@@ -49,20 +52,20 @@ else
     <p><a asp-area="" asp-page="/Account/Login">Log in</a> to add an answer.</p>
 }
 
-<!-- Owner-only Actions -->
+
 @if (isOwner)
 {
     <hr />
     <div>
-        <!-- Edit Button -->
+        
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
 
-        <!-- Delete Form -->
+        
         <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this question?');">
             <button type="submit" class="btn btn-danger">Delete</button>
         </form>
     </div>
 }
 
-<!-- Back to List -->
+
 <a asp-action="Index" class="btn btn-secondary mt-3">Back to List</a>
