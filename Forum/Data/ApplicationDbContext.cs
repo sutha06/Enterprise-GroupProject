@@ -20,6 +20,12 @@ public class ApplicationDbContext : IdentityDbContext
     {
         base.OnModelCreating(modelBuilder);
 
+           modelBuilder.Entity<Profile>()
+        .HasOne(p => p.User)
+        .WithOne()
+        .HasForeignKey<Profile>(p => p.UserId)
+        .OnDelete(DeleteBehavior.Cascade); 
+
       
     }
 }

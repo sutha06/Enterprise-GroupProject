@@ -35,9 +35,6 @@ namespace Forum.Controllers
 
             var question = await _context.Questions
                 .Include(q => q.User)
-                .Include(q => q.Answers)
-                .ThenInclude(a => a.User)
-                .FirstOrDefaultAsync(q => q.Id == id);
 
             if (question == null)
                 return NotFound();
@@ -144,7 +141,7 @@ namespace Forum.Controllers
             return View(question);
         }
 
-        // GET: Questions/Delete/5
+       
         [Authorize]
         public async Task<IActionResult> Delete(int? id)
         {
@@ -160,7 +157,7 @@ namespace Forum.Controllers
             return View(question);
         }
 
-        // POST: Questions/Delete/5
+       
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         [Authorize]
